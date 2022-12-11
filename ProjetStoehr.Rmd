@@ -1,0 +1,154 @@
+---
+title: "ProjetStoehr"
+author: "tanguyrenaudie"
+date: "2022-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## TODO
+
+Curve the cumulative functions
+
+## Exercice 1
+
+First, we compute the cumulative distribution functions, and the inverse of these functions, which are necessary for random variable simulations.
+
+ATTENTION CALCULSSS
+
+```{r}
+f_density = function(x){
+  alpha = 3
+  theta = 2
+  #shape = alpha , scale = theta 
+  return( dgamma(x, shape = alpha, scale=theta))
+}
+
+F_cumulative <- function(x){
+  alpha = 3
+  theta = 2
+  return(pgamma(x,shape=alpha, scale=theta))
+}
+
+g_density = function(y){
+  mu = -13
+  b = 2
+  return( (y>=(mu-2*b) & y<=mu) * (y-mu+2*b)/(4*b^2) +  (y>mu) * 1/(2*b)*exp(-(y-mu)/b) )
+}
+
+
+G_cumulative <- function(y){
+  mu = -13
+  b = 2
+  
+  ret1 <- (y>=(mu-2*b) & y<=mu) *  (1/(8*b^2) * (y-mu+2*b)^2)
+
+  ret2 <- (y>mu) *( 1-exp(-(y-mu)/b)/2)
+  
+  return(ret1+ret2)
+}
+
+```
+
+```{r}
+#Quelques tests
+stopifnot(g_density(-13) == 1/4)
+stopifnot(g_density(-17) == 0 )
+stopifnot(g_density(-11) ==( 1/4*exp(-1)))
+stopifnot(G_cumulative(-17)==0) #mu-2b
+stopifnot(G_cumulative(-13)==1/2) #mu
+stopifnot(G_cumulative(-11)==1-exp(-1)/2) #mu+b
+
+```
+
+The plots of these functions are correct.
+
+```{r}
+plot(f_density, xlim = c(0,20))
+plot(F_cumulative, xlim = c(0,100))
+plot(g_density, xlim = c(-17,-10))
+plot(G_cumulative, xlim=c(-17,0))
+```
+
+G cumulative distribution function seems bijective between $\mu-2b$ and $+\inf$
+
+For $u \in [0,1/2]$ we have $Ginv(u) = \mu - 2b + b\sqrt{8u}$ So, if $U \to \textbf{U[0,1]}$ then
+
+$$\mu - 2b + 4\sqrt{u}\to \textbf{P_X} $$
+
+For $u \in ]1/2,1]$ we have:
+
+$$
+G_{inv}(u)  \mu - b ln(2(1-u))
+$$
+
+So, if $U \to \textbf{U[0,1]}$, since $1-U \to \textbf{U[0,1]}$ $$\mu - b ln(2u) \to \textbf{P_X} $$
+
+```{r}
+
+Ginv <- function(u){
+  mu = -13
+  b = 2
+  ret1 <- (u>=0 & u <=1/2) * (mu-2*b+b*sqrt(8*u))
+  ret2 <- (u<=1 & u >1/2)  * ( mu-b*log(2*(1-u)))
+  return (ret1+ret2)
+}
+
+
+simu_Y <- function(N){
+
+  U = runif(N)
+  GinvU = Ginv(U)
+  return(GinvU)
+}
+simu_X <- function(N){
+  alpha = 3
+  theta = 2
+  return(rgamma(N, shape = alpha, scale = theta))
+}
+
+hist(simu_Y(10000),  freq= FALSE, breaks = 25, col = 'blue', plot = TRUE)
+curve(g_density, add= TRUE, col = 'red')
+
+
+hist(simu_X(10000),  freq= FALSE, breaks = 25, col = 'blue', plot = TRUE)
+curve(f_density, add= TRUE, col = 'red')
+
+curve(Ginv, xlim = c(0,1))
+curve(G_cumulative(Ginv(x)), xlim = c(0,1))
+curve(Ginv(G_cumulative(x)), xlim = c(-17,-10))
+
+```
+
+
+
+
+
+
+```{r}
+simu1 <- function(N){
+  # methode 1: sigma = sommes des carrés/N  - espérance^2
+  s = 0
+  s2 = 0 
+  
+
+  Y = simu_Y(N)
+  X = simu_X(N)
+  h = X+Y>0
+  
+  esp = 1/N*sum(h)
+  var = 1/N * sum(h^2) - esp^2
+  
+  alpha = 0.05
+  q = qnorm(1-alpha/2)
+  margin = sqrt(var)*q/sqrt(N)
+  
+  cat("error", alpha, ": result", esp, "-+", margin)
+  
+}
+
+
+```
