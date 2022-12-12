@@ -3,6 +3,9 @@ title: "ProjetStoehr"
 author: "tanguyrenaudie"
 date: "2022-12-11"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -11,11 +14,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## TODO
 
-Curve the cumulative functions
 
 ## Exercice 1
 
-First, we compute the cumulative distribution functions, and the inverse of these functions, which are necessary for random variable simulations.
+En premier, nous calculons et implémentons les fonctions de répartition et les fonctions de densité. 
 
 ATTENTION CALCULSSS
 
@@ -73,19 +75,23 @@ plot(g_density, xlim = c(-17,-10))
 plot(G_cumulative, xlim=c(-17,0))
 ```
 
-G cumulative distribution function seems bijective between $\mu-2b$ and $+\inf$
+G est bijective entre $\mu-2b$ et
+$+\infty$
 
-For $u \in [0,1/2]$ we have $Ginv(u) = \mu - 2b + b\sqrt{8u}$ So, if $U \to \textbf{U[0,1]}$ then
+Pour tout $u \in [0,1/2]$ on a  $Ginv(u) = \mu - 2b + b\sqrt{8u}$.
+Donc si 
+$U \to \textbf{U[0,1]}$ alors
 
-$$\mu - 2b + 4\sqrt{u}\to \textbf{P_X} $$
+$$\mu - 2b + 4\sqrt{u}\to \textbf{P_Y} $$
 
-For $u \in ]1/2,1]$ we have:
+Pour tout $u \in ]1/2,1]$, on a:
 
 $$
-G_{inv}(u)  \mu - b ln(2(1-u))
+G_{inv}(u)  = \mu - b ln(2(1-u))
 $$
 
-So, if $U \to \textbf{U[0,1]}$, since $1-U \to \textbf{U[0,1]}$ $$\mu - b ln(2u) \to \textbf{P_X} $$
+Donc, si $U \to \textbf{U[0,1]}$, comme $1-U \to \textbf{U[0,1]}$,
+$$\mu - b ln(2u) \to \textbf{P_Y} $$
 
 ```{r}
 
@@ -121,14 +127,33 @@ curve(Ginv, xlim = c(0,1))
 curve(G_cumulative(Ginv(x)), xlim = c(0,1))
 curve(Ginv(G_cumulative(x)), xlim = c(-17,-10))
 
+
 ```
 
+### I.4.  Implémenter un code R qui fournit, pour n = 1000, une estimation
+    de δ, de l'erreur quadratique moyenne de pn et un intervalle de
+    confiance asymptotique bilatère pour δ au niveau 95%.
 
+Nous utilisons la méthode de Monte Carlo classique, qui estime
+l'espérance à partir d'une moyenne empirique. Notons $h_n$ cet
+estimateur, comme dans le cours.
 
+On pose $h(X,Y) = \mathbf{1}_{X+Y>t}$ Alors, h(X,Y) suit une loi de
+Bernoulli de paramètre $p = \delta$ Et la variance $\sigma^2$ peut être
+estimée par:
 
+Par application du théorème central limite, l'intervalle de confiance
+asymptotique est donné par: $$
+IC_{1-\alpha} = [\bar{h_n}-\frac{\sigma q_{1-\alpha/2}}{\sqrt{n}},\bar{h_n}+\frac{\sigma q_{1-\alpha/2}}{\sqrt{n}}]
+$$
 
+Or la variance de h(X) vaut $\delta(1-\delta)$ donc on ne peut pas la
+calculer directement, il faut l'estimer avec l'estimateur : $$
+\hat{\sigma} = \frac{1}{N} \sum_1^N h(X_i)^2 - \delta^2
+$$
 
 ```{r}
+library(glue)
 simu1 <- function(N){
   # methode 1: sigma = sommes des carrés/N  - espérance^2
   s = 0
@@ -145,10 +170,450 @@ simu1 <- function(N){
   alpha = 0.05
   q = qnorm(1-alpha/2)
   margin = sqrt(var)*q/sqrt(N)
-  
-  cat("error", alpha, ": result", esp, "-+", margin)
-  
+  print(glue::glue('Erreur quadratique moyenne:  {(var/N)}' ))
+  print(glue::glue("Avec un risque de {alpha}-> resultat :  {esp} +/- {margin}"))
+  return();
 }
+simu1(1000)
+```
 
+### I.5.  (♠) Vérifier empiriquement si l'hypothèse du régime asymptotique pn
+    est satisfaite.
+
+Il suffit de tracer l'erreur quadratique moyenne en fonction du nombre
+d'itérations
+
+```{r}
+simu_erreur <- function(N){
+  # methode 1: sigma = sommes des carrés/N  - espérance^2
+  s = 0
+  s2 = 0 
+  
+
+  Y = simu_Y(N)
+  X = simu_X(N)
+  h = X+Y>0
+  
+  esp = 1/seq(1,N)*cumsum(h)
+  var_vector = 1/seq(1,N) * (cumsum(h^2) - esp^2) #pour des Nsim différents : [var(N1), var(N2), var(N3)...]
+  erreur_quad = var_vector/seq(1,N)
+  
+  plot(esp)
+  plot(erreur_quad)
+
+}
+simu_erreur(1000)
 
 ```
+
+Sur le tracé de la variance de notre estimateur de Monte Carlo, nous
+voyons que celle-ci ne devient négligeable qu'à partir de 3000
+itérations environ. En effet, dans le calcul de l'espérance, nous voyons
+que celle-ci ne se stabilise qu'à partir de 3000 voire 4000 itérations.
+Donc l'hypothèse du régime asymptotique n'est pas vérifiée pour
+$n = 1000$.
+
+### I.6.
+
+On note $F$ la fonction de répartition de $X$. Montrer que: \$
+\delta=\mathbb{E}[1-F(t-Y)]\$
+
+$$ 
+\begin{aligned}
+  \mathbb{E}[1-F(t-Y)] &= \int_\mathbb{R} (1 - F(t-y)) g(y) dy \\
+                      &= \int_\mathbb{R} \int_{t-y}^{\infty}f(x)dx g(y) dy \\
+                      &= \int_\mathbb{R} \int_\mathbb{R} \mathbb{1}_{x>t-y}f(x)d(x)g(y)dy \\
+                      &= \int_\mathbb{R^2} \mathbb{1}_{x>t-y} {\mathbb{dP}_X(x)} \bigotimes \mathbb{dP}_Y(y)  \;\; par \, Fubini \\
+                      &=  \mathbb{E}[ \mathbb{1}_{X+Y>t}]  \\
+                      &= \delta
+\end{aligned}
+$$ \### En déduire un estimateur $\widehat{\delta}_n$ de $\delta$
+utilisant une suite de $n$ variables aléatoires
+$\left(U_k\right)_{k \geq 1}$ i.i.d. suivant la loi uniforme sur
+$[0.1]$.
+
+On pose l'estimateur \$\widehat{\delta}*n =* \frac{1}{N} \sum{i=1}\^N
+1-F(t-Y_i) \$ où les $Y_i$ suivent la loi de Y
+
+### I.7
+
+Implémenter un code R qui fournit, pour $n=1000$, l'estimation
+$\widehat{\delta}_n$, l'erreur quadratique moyenne de
+$\widehat{\delta}_n$ et un intervalle de confiance asymptotique bilatère
+pour $\delta$ au niveau $95 \%$.
+
+```{r}
+simu2 <- function(N){
+  # methode 1: sigma = sommes des carrés/N  - espérance^2
+  s = 0
+  s2 = 0 
+  
+  Y = simu_Y(N) #ici, interviennent les U_i, par méthode de la fonction inverse
+  h = 1-F_cumulative(-Y) #rappelons que t = 0
+
+  
+  
+  esp = 1/N*sum(h)
+  var = 1/N * sum(h^2) - esp^2
+  
+  alpha = 0.05
+  q = qnorm(1-alpha/2)
+  margin = sqrt(var)*q/sqrt(N)
+  print(glue::glue('Erreur quadratique moyenne:  {(var/N)}' ))
+  print(glue::glue("Avec un risque de {alpha}-> resultat :  {esp} +/- {margin}"))
+}
+#qs = (Ginv(c(0,0.1,0.3,0.4,0.5,0.7,0.9,0.99)))
+simu2(1000)
+
+```
+
+On remarque que l'erreur quadratique moyenne est environ 6 fois plus
+faible, pour cet estimateur. Cete estimateur est sans biais d'après la
+question précédente, et sa convergence est assurée par la loi forte des
+grands nombres. De plus, la variance de $\widehat{\delta}_n$ est plus
+faible que celle de $h_n$ ce qui en fait un meilleur estimateur de
+$\delta$.
+
+En fait, on a toujours une variance inférieure pour cet estimateur, car
+:
+
+$$
+\begin{aligned}
+& \operatorname{Var} \hat{\delta}_n  \leqslant \operatorname{Var}\left(\hat{p}_n\right) \\
+& \Leftrightarrow \frac{\operatorname{Var}(1-F(t-y))}{n} \leqslant \frac{\operatorname{Var}\left(\mathbb{1}_{x+y \lambda t}\right)}{n} \\
+& \Leftrightarrow \mathbb{E}\left[(1-F(t-y))^2\right]-\delta^2 \leqslant \delta-\delta^2 \\
+& \Leftrightarrow \mathbb{E}\left[(1-F(t-y))^2\right] \leqslant \delta=\mathbb{E}[1-F(t-y)]
+\end{aligned}
+$$
+
+### I.9.
+
+On pose 
+$$
+\begin{aligned}
+  h \colon &\,\mathbb{R^2} \to \mathbb{R}\\
+  & y  \mapsto 1-F(t-y)
+\end{aligned}
+$$
+
+En utilisant la méthode de la variable antithétique, proposer un
+estimateur $\widehat{\delta}_n^{\mathrm{A}}$ de $\delta$. Montrer que
+$\operatorname{Var}\left[\widehat{\delta}_n^{\mathrm{A}}\right] \leq$
+$\operatorname{Var}\left[.\widehat{\delta}_n\right]$
+
+
+Nous remarquons tout simplement que si U suit une loi uniforme sur
+[0,1], alors 1-U suit également une loi uniforme sur [0,1] . Or, on
+utilise des $U_i$ pour générer les $Y_i$ de loi de densité g.
+
+Donc il suffit de choisir comme variable antithétique
+$Y' = G_{inv}(1-U) \to \mathbb{P}_Y$
+
+On pose donc:
+
+$$
+U \to \mathbb{\mathbb{U}[0,1]}\\
+Y = G_{inv}(U) \to \mathbb{P_Y} \\
+Y' = G_{inv}(1-U) \to \mathbb{P_Y}
+$$
+Le nouvel estimateur est alors: 
+$$
+\widehat{\delta}_n^{\mathrm{A}} = \frac{1}{2N} \sum_{i=1}^N h(Y_i)+ h(Y_i')
+$$
+La variance de cet estimateur vaut 
+$$
+\begin{aligned}
+Var(\widehat{\delta}_n^{\mathrm{A}}) 
+& = \frac{1}{4N} Var(h(Y)+ h(Y')) \\
+&= \frac{1}{4N} (Var(h(Y) + Var(h(Y') + 2Cov(h(Y),h(Y')) \\
+&= \frac{1}{4N} (2Var(h(Y) + 2Cov(h(Y),h(Y')) \\
+&= \frac{1}{2N} (Var(h(Y) + Cov(h(Y),h(Y')) \\
+\end{aligned}
+$$
+Il suffit de montrer que $Cov(h(Y),h(Y')) < 0 $ pour montrer que le nouvel estimateur est au moins efficace que $\bar{h}_{2n}$.
+
+Or, on sait que h est une fonction croissante de sa variable y, et que la transformation antithétique subie par U pour donner Y' est décroissante. 
+Donc $ Cov(h(Y), h(Y')) \le 0 $
+
+Donc $Var(\widehat{\delta}_n^{\mathrm{A}}) \le Var(\bar{h}_n)$
+
+### I.10. 
+Implémenter un code R qui fournit, pour $n=1000$, l'estimation $\widehat{\delta}_n^{\mathrm{A}}$, l'erreur quadratique moyenne de $\widehat{\delta}_n^{\mathrm{A}}$ et un intervalle de confiance asymptotique bilatère pour $\delta$ au niveau $95 \%$.
+
+```{r}
+simu3 <- function(N){
+
+  alpha = 3
+  theta = 2
+
+  
+  U = runif(N)
+  Y = Ginv(U) #ici, interviennent les U_i
+  Y2 = Ginv(1-U)
+  h = (1 - F_cumulative(-Y) + 1-F_cumulative(-Y2))/2 #rappelons que t = 0
+  
+
+  
+  
+  esp = 1/N*sum(h)
+  var = 1/N * sum(h^2) - esp^2
+  
+  alpha = 0.05
+  q = qnorm(1-alpha/2)
+  margin = sqrt(var)*q/sqrt(N)
+  print(glue::glue('Erreur quadratique moyenne:  {(var/N)}' ))
+  print(glue::glue("Avec un risque de {alpha}-> resultat :  {esp} +/- {margin}"))
+}
+simu3(1000)
+
+```
+
+On voit que l'erreur quadratique moyenne est plus de deux fois plus faible! 
+Cete estimateur est donc bien plus efficace, en effet. 
+
+### I.11
+11. Entre $h_{0,1}$ et $h_{0,2}$, quelle fonction utiliseriez-vous pour réduire la variance de $\widehat{\delta}_n$ à l'aide de la méthode de la variable de contrôle? Écrire l'estimateur $\widehat{\delta}_n^{\text {cont }}$ associé.
+
+
+Pour la méthode de variable de contrôle, il nous faut une variable aléatoire auxiliaire $h_0(Y)$ dont on capable de calculer exactement l'espérance, disons $m$.
+
+Comme $E(h(Y)) = E(h(Y) - h_0(Y)) + m$, en ajoutant un paramètre $b$ à optimiser, l'estimateur correspondant: 
+$$ 
+\widehat{\delta}_n^{cont}= \frac{1}{N} \sum_{i=1}^N h(Y_i) - b(h_0(Y_i) - m)
+$$ 
+
+Donc entre h_{0,1} et h_{0,2}, comme il n'est pas possible de calculer la valeur exacte de $P(Y \ge t - q_\epsilon)$, il est préférable d'utiliser $h_{0,1}$
+
+Calculons E(Y)
+
+$$
+\begin{aligned}
+\mathbb{E}(Y) 
+&= \int_{u-2b}^\mu y \frac{y-\mu + 2b}{4b^2} dy  + \int_{\mu}^\infty y \frac{exp(-\frac{y-\mu}{b})}{2b}dy \\
+
+&= \int_{u-2b}^\mu (y-\mu+2b) \frac{y-\mu+2b}{4b^2} dy + \int_{\mu-2b}^\mu (\mu-2b) \frac{y-\mu+2b}{4b^2} dy   + \int_{\mu}^\infty y \frac{exp(-\frac{y-\mu}{b})}{2b}dy \\
+
+&= \left[\frac{(y-\mu+2b)^3}{12b^2}\right]_{\mu-2b}^\mu + \frac{\mu-2b}{4b^2}\left[\frac{(y-\mu+2b)^2}{2}\right]_{\mu-2b}^\mu 
++ \left[-\frac{y}{2}exp(-\frac{y-\mu}{b})\right]_\mu^\infty
++ \frac{1}{2} \int_\mu^\infty exp(-\frac{y-\mu}{b})dy  \\
+
+&= \frac{8b^3}{12b^2} + \frac{4b^2(\mu-2b)}{8b^2} + \frac{\mu+2}{2} \\
+&= \frac{2b}{3} + \frac{\mu-2b}{2} + \frac{\mu+2}{2} \\
+
+&= \mu -b/3 + 1 \\
+&= -(12+2/3)
+
+\end{aligned}
+$$
+Verifions ce calcul. 
+
+```{r}
+espY <- function(N){
+  U = runif(N)
+  mu = -13
+  Y = Ginv(U) #ici, interviennent les U_i
+  Y2 = Ginv(1-U)
+  h = (Y+Y2)/2  #rappelons que t = 0
+  
+
+  
+  
+  esp = 1/N*sum(h)
+  var = 1/N * sum(h^2) - esp^2
+  
+  alpha = 0.05
+  q = qnorm(1-alpha/2)
+  margin = sqrt(var)*q/sqrt(N)
+  print(glue::glue('Erreur quadratique moyenne:  {(var/N)}' ))
+  print(glue::glue("Avec un risque de {alpha}-> resultat :  {esp} +/- {margin}"))
+}
+espY(100000)
+b = 2
+mu = -13
+esp_theorique = -(12+2/3)
+print("esp_theorique : ")
+print(esp_theorique)
+```
+
+On a bien calculé l'espérance théorique de Y, notée m dans le code ci-dessous. 
+Maintenant, faisons la simulation de $\delta$ par variable de contrôle $h_{0,1}(Y) = Y$
+
+```{r}
+simu5 <- function(N){
+
+  alpha = 3
+  theta = 2
+  b = 1
+  m = -(12+2/3)
+  
+  U = runif(N)
+  Y = Ginv(U) #ici, interviennent les U_i
+  h = 1 - F_cumulative(-Y) - b*Y 
+  
+  moy = 1/N*sum(h)
+  esp = moy + b*m
+  var = 1/N * sum(h^2) - moy^2
+  
+  alpha = 0.05
+  q = qnorm(1-alpha/2)
+  margin = sqrt(var)*q/sqrt(N)
+  print(glue::glue('Erreur quadratique moyenne:  {(var/N)}' ))
+  print(glue::glue("Avec un risque de {alpha}-> resultat :  {esp} +/- {margin}"))
+}
+simu5(1000)
+
+```
+
+Nous remarquons que cette méthode ne converge qu'à partir de 100 mille itérations environ. Elle serait donc moins précise. Et l'erreur quadratique moyenne plus élevée, qu'avec l'estimateur $\widehat{\delta}_n$
+
+
+
+
+
+
+
+
+
+
+
+
+### I.18
+18. Soit $h \in L^2([0,1])$. Montrer que pour une suite $\left(U_k\right)_{k \geq 1}$ de variables aléatoires $i.i.d$. de loi uniforme sur [0,1], on a
+$$
+{Var}\left[\frac{1}{n} \sum_{k=1}^n h\left(\frac{k-1+U_k}{n}\right)\right] \leq {Var}\left[\frac{1}{n} \sum_{k=1}^n h\left(U_k\right)\right]
+$$
+
+On a: 
+$$
+\begin{aligned}
+{Var}\left[\frac{1}{n} \sum_{k=1}^n h\left(\frac{k-1+U_k}{n}\right)\right] 
+&= \frac{1}{n^2}  \sum_{k=1}^n  Var \left[ h\left(\frac{k-1+U_k}{n}\right) \right ] \\
+&=  \frac{1}{n^2}  \sum_{k=1}^n  \mathbb{E}\left[h\left(\frac{k-1+U_k}{n}\right)^2\right] - 
+\mathbb{E}\left[h\left(\frac{k-1+U_k}{n}\right)\right]^2 \\
+&=  \frac{1}{n^2}  \sum_{k=1}^n  
+\int_0^1 h\left(\frac{k-1+x}{n}\right)^2dx - 
+\left[\int_0^1 h\left(\frac{k-1+x}{n}\right)dx\right]^2 \\
+&=  \frac{1}{n^2}  \sum_{k=1}^n  
+\int_{\frac{k-1}{n}}^{\frac{k}{n}} nh(y)^2dy - 
+\left[\int_{\frac{k-1}{n}}^{\frac{k}{n}} nh(y) dy \right]^2 \\
+&=  \frac{1}{n}  
+\int_{0}^{1} h(y)^2dy - 
+\frac{1}{n} \sum_{k=1}^n  \left[\int_{\frac{k-1}{n}}^{\frac{k}{n}} h(y) dy \right]^2 \\
+&\leq \frac{1}{n}  
+\int_{0}^{1} h(y)^2dy - 
+\frac{1}{n} \left[ \sum_{k=1}^n  \int_{\frac{k-1}{n}}^{\frac{k}{n}} h(y) dy \right]^2 \\
+& =  \frac{1}{n}  
+\int_{0}^{1} h(y)^2dy - 
+\frac{1}{n} \left[  \int_0^1 h(y) dy \right]^2 \\
+& =  Var(h(U))/n \\
+&= Var\left[\frac{1}{n} \sum_{k=1}^n h(U_k)\right] \;\;\; (car \; U_i \; iid)
+\\
+\end{aligned}
+$$
+
+### I. 19.
+$$
+\text {En déduire un nouvel estimateur } \widehat{\Delta}_n \text { de } \delta \text {. Comment peut-on interpréter cet estimateur? }
+$$
+Nous pouvons choisir comme estimateur, précisément $\widehat{\Delta}_n=\frac{1}{n} \sum_{k=1}^n h\left(\frac{k-1+U_k}{n}\right)$
+
+Cet estimateur est sans biais, car :
+$$
+\mathbb{E}\left(h(\frac{k-1 + U}{n})\right) = \int_{\frac{k-1}{n}}^{\frac{k}{n}} nh(y) dy
+$$
+ie: 
+$$
+\frac{1}{n} \sum_{k=1}^n \mathbb{E}\left(h(\frac{k-1 + U}{n})\right) = \int_0^1 h(y)dy = \delta
+$$
+
+Nous pouvons interpréter le terme $\frac{k-1 + U}{n}$ commme une variable aléatoire suivant la loi uniforme $\mathbb{U}[k-1/n, k/n]$. Donc, on fait ici une sorte moyenne glissante des valeurs de h sur [0,1], où l'on impose de prélever une valeur dans chaque intervalle $[k-1/n, k/n]$. On se rapproche donc d'une méthode déterministe (plus couteuse en calculs, mais de variance plus faible).
+
+### I.20.  
+Implémenter un code $\mathrm{R}$ qui fournit, pour $n=1000$, l'estimation $\widehat{\Delta}_n$, l'erreur quadratique moyenne de $\widehat{\Delta}_n$ et un intervalle de confiance asymptotique bilatère pour $\delta$ au niveau $95 \%$.
+
+Nous allons implémenter cet estimateur
+- simu4 : avec la fonction $h = \mathbb{X+Y > t}$
+- simu4_2: avec la fonction $h = 1 - F_X(t-Y)$
+
+
+
+```{r}
+simu4 <- function(N){
+
+  alpha = 3
+  theta = 2
+  
+  s = 0 
+  s2 = 0 
+
+  U = runif(N)
+  Uk = (seq(0,N-1) + U)/N
+  
+  
+  Y = Ginv(Uk) #ici, interviennent les U_i
+  X = rgamma(N, shape = alpha, scale = theta)
+  
+  
+  #h est le vecteur des h(X_i,Y_i)
+  h =  (X+Y > 0)*1. #rappelons que t = 0 
+  
+  
+  
+  esp = 1/N*sum(h)
+  var = 1/N * sum(h^2) - esp^2
+  
+  alpha = 0.05
+  q = qnorm(1-alpha/2)
+  margin = sqrt(var)*q/sqrt(N)
+  print(glue::glue('Erreur quadratique moyenne:  {(var/N)}' ))
+  cat("Avec un risque de ", alpha, "-> resultat : ", esp, "+/-", margin)
+}
+#qs = (Ginv(c(0,0.1,0.3,0.4,0.5,0.7,0.9,0.99)))
+simu4(1000)
+```
+```{r}
+simu42 <- function(N){
+
+  alpha = 3
+  theta = 2
+  
+  s = 0 
+  s2 = 0 
+
+  U = runif(N)
+  Uk = (seq(0,N-1) + U)/N
+  
+  
+  Y = Ginv(Uk) #ici, interviennent les U_i
+
+  
+  #h est le vecteur des h(X_i,Y_i)
+  h =  1 - F_cumulative(-Y) #rappelons que t = 0 
+  
+  esp = 1/N*sum(h)
+  var = 1/N * sum(h^2) - esp^2
+  
+  alpha = 0.05
+  q = qnorm(1-alpha/2)
+  margin = sqrt(var)*q/sqrt(N)
+  print(glue::glue('Erreur quadratique moyenne:  {(var/N)}' ))
+  cat("Avec un risque de ", alpha, "-> resultat : ", esp, "+/-", margin)
+}
+#qs = (Ginv(c(0,0.1,0.3,0.4,0.5,0.7,0.9,0.99)))
+simu42(1000)
+```
+Le deuxième estimateur fonctionne mieux que le premier, mais les deux méthodes sont de variance plus faible que $\bar{h}_n$
+
+
+`
+
+
+
+
+
+
+
+
+
+
+
