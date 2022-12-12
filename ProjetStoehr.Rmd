@@ -435,6 +435,7 @@ print("esp_theorique : ")
 print(esp_theorique)
 ```
 
+### I.12.
 On a bien calculé l'espérance théorique de Y, notée m dans le code ci-dessous. 
 Maintenant, faisons la simulation de $\delta$ par variable de contrôle $h_{0,1}(Y) = Y$
 
@@ -465,6 +466,61 @@ simu5(1000)
 ```
 
 Nous remarquons que cette méthode ne converge qu'à partir de 100 mille itérations environ. Elle serait donc moins précise. Et l'erreur quadratique moyenne plus élevée, qu'avec l'estimateur $\widehat{\delta}_n$
+
+### I.13
+Montrons que
+$$
+\begin{aligned}
+& {Var}\left[\widehat{\delta}_n(\beta)\right]=\mathbb{V a r}\left[\widehat{\delta}_n\right]-\frac{1}{n}(2<\beta, C>-<\beta, \Sigma \beta>), \quad \text { avec } \\
+& C=\left(\begin{array}{c}
+{Cov}[F(t-Y), Y] \\
+{Cov}\left[F(t-Y), \mathbb{1}_{\left\{Y \geq t-q_{\varepsilon}\right\}}\right]
+\end{array}\right) \text { et } \quad \Sigma=\left(\begin{array}{cc}
+\mathbb{V a r}[Y] & {Cov}\left[Y, \mathbb{1}_{\left\{Y \geq t-q_{\varepsilon}\right\}}\right] \\
+{Cov}\left[Y, \mathbb{1}_{\left\{Y \geq t-q_{\varepsilon}\right\}}\right] & \mathbb{V a r}\left[\mathbb{1}_{\left\{Y \geq t-q_{\varepsilon}\right\}}\right]
+\end{array}\right) .
+\end{aligned}
+$$
+$$
+\widehat{\delta}_n(\beta)=1-\frac{1}{n} \sum_{k=1}^n F\left(t-Y_k\right)-<\beta,\left(\begin{array}{c}
+Y_k-\mathbb{E}[Y] \\
+\mathbb{1}_{\left\{Y_k \geq t-q_{\varepsilon}\right\}}-\mathbb{P}\left[Y \geq t-q_{\varepsilon}\right]
+\end{array}\right)>
+$$
+L'estimateur est composé d'une constante, puis d'une moyenne des variables aléatoires du type: $$F\left(t-Y_k\right)-<\beta,\left(\begin{array}{c}
+Y_k-\mathbb{E}[Y] \\
+\mathbb{1}_{\left\{Y_k \geq t-q_{\varepsilon}\right\}}-\mathbb{P}\left[Y \geq t-q_{\varepsilon}\right]
+\end{array}\right)>$$
+Et ces variables aléatoires sont i.i.d, car les $Y_k$ le sont.
+
+donc, 
+$$\mathbb{1}_{Y_k \geq t-q_\varepsilon} - \mathbb{P}\left[Y \geq t-q_{\varepsilon} \right]$$
+$$ 
+\frac{1}{n} \sum_{k=1}^n  Var\left[F(t-Y) - \beta_1 (Y_k - \mathbb{E}[Y]) - \beta_2( \mathbb{1}_{Y_k \geq t-q_\varepsilon} - \mathbb{P}\left(Y \geq t-q_{\varepsilon} \right)\right]
+$$
+$$
+\begin{aligned}
+{Var}\left[\widehat{\delta}_n(\beta)\right]
+&=\frac{1}{n} Var\left[F(t-Y) - \beta_1 (Y - \mathbb{E}[Y]) - \beta_2( \mathbb{1}_{Y \geq t-q_\varepsilon} - \mathbb{P}\left(Y \geq t-q_{\varepsilon} \right)\right] \\
+&=\frac{1}{n} Var\left[F(t-Y)\right] + \beta_1^2 Var(Y) + \beta_2^2 Var( \mathbb{1}_{Y\geq t-q_\varepsilon}) -2\beta_1Cov(F(t-Y),Y) -2\beta_2Cov(F(t-Y), \mathbb{1}_{(Y \geq t-q_\varepsilon)}) + 2\beta_1\beta_2 Cov(Y,\mathbb{1}_{(Y \geq t-q_\varepsilon)}) \\
+&=\frac{1}{n} Var\left[F(t-Y)\right]-2\beta_1Cov(F(t-Y),Y) -2\beta_2Cov(F(t-Y), \mathbb{1}_{(Y \geq t-q_\varepsilon)}) + \beta_1^2 Var(Y) + \beta_2^2 Var( \mathbb{1}_{Y\geq t-q_\varepsilon})  + 2\beta_1\beta_2 Cov(Y,\mathbb{1}_{(Y \geq t-q_\varepsilon)}) \\
+&= \mathbb{Var}\left[\widehat{\delta}_n\right]-\frac{1}{n}(2<\beta, C>-<\beta, \Sigma \beta>) \\
+&\text{où le premier terme donne } \mathbb{Var}\left[\widehat{\delta}_n\right]\\
+&\text{et où les deux suivants donnent} <\beta, C> \\
+&\text{et où les trois derniers donnent}<\beta, \Sigma \beta> \\
+
+\end{aligned}
+$$
+
+```{r}
+alpha = 3
+theta = 2
+qgamma(0.6, shape = alpha , scale= theta) #qeps = 6.21
+integrate(function(x){dgamma(x,shape = alpha , scale = theta)},lower= 0, upper = 6.210757 )
+curve(dgamma(x,shape = alpha , scale = theta), xlim = c(0,10))
+```
+
+
 
 
 
