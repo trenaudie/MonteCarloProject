@@ -513,18 +513,42 @@ $$
 $$
 
 ```{r}
-alpha = 3
-theta = 2
 qgamma(0.6, shape = alpha , scale= theta) #qeps = 6.21
-integrate(function(x){dgamma(x,shape = alpha , scale = theta)},lower= 0, upper = 6.210757 )
-curve(dgamma(x,shape = alpha , scale = theta), xlim = c(0,10))
 ```
 
+### I.14
 
+Calculer explicitement $\Sigma$ et vérifier qu'elle est inversible
 
+Nous voyons que le quantile d'ordre 0.6 de X est inférieur à 6.3. Donc $t-q_\eps \gt \mu$
+Posons $p = P(Y \geq t-q_{\varepsilon}), m = \mathbb{E}(Y) = -(12+2/3)$
 
+Il suit, 
+$$
+\begin{aligned}
+Cov\left[Y, \mathbb{1}_{\left\{Y \geq t-q_{\varepsilon}\right\}}\right] 
+&= \mathbb{E}((Y - m )(\mathbb{1}_{\left\{Y \geq t-q_{\varepsilon}\right\}} - p) ) \\
+&=  \mathbb{E}(Y\mathbb{1}_{(Y \geq t-q_{\varepsilon})}) - mp
+\end{aligned}
+$$
+Par suite, 
+$$
+\begin{aligned}
+\mathbb{E}(Y\mathbb{1}_{(Y \geq t-q_{\varepsilon})})
+&= \int_{t-q_\epsilon}^\infty \frac{y}{2b} exp(-\frac{y-\mu}{b})dy \\
+&= \left[-\frac{y}{2}exp(-\frac{y-\mu}{b})\right]_{t-q_\epsilon}^\infty+ \int_{t-q_\epsilon}^\infty \frac{1}{2} exp(-\frac{y-\mu}{b})dy \\
+&= -q_\epsilon exp(\frac{\epsilon+\mu}{b})+ \int_{t-q_\epsilon}^\infty \frac{1}{2} exp(-\frac{y-\mu}{b})dy \; \text {  avec (t = 0)} \\
+&= -q_\epsilon/2 exp(\frac{\epsilon+\mu}{b}) -b/2 exp(\frac{\epsilon+\mu}{b})\\
+&= - \frac{q_\epsilon+\mu}{2} exp(\frac{\epsilon+\mu}{b}) \\
+\end{aligned}
+$$
 
+En outre, 
 
+$$
+Var(\mathbb{1}_{(Y \geq t-q_{\varepsilon})}) =  p(1-p) \text{ (loi de Bernoulli de paramètre p)}
+$$
+Enfin le calcul de $Var(y)$ est plus compliqué. 
 
 
 
